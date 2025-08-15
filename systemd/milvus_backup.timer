@@ -1,0 +1,17 @@
+[Unit]
+Description=Run Milvus backup daily
+Requires=milvus-backup.service
+
+[Timer]
+# Run daily at 2:00 AM
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=300
+
+# Alternative schedules (uncomment to use):
+# OnCalendar=*-*-* 02:00:00  # Daily at 2:00 AM
+# OnCalendar=Mon *-*-* 02:00:00  # Weekly on Monday at 2:00 AM
+# OnCalendar=*-*-01 02:00:00  # Monthly on 1st at 2:00 AM
+
+[Install]
+WantedBy=timers.target

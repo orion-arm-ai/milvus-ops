@@ -1,0 +1,29 @@
+[Unit]
+Description=Milvus Database Backup Service
+After=network.target
+Wants=network.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/local/bin/milvus-backup.sh
+StandardOutput=journal
+StandardError=journal
+
+# Security settings
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/data/backups /var/log
+PrivateTmp=true
+
+# Docker access
+SupplementaryGroups=docker
+
+# Resource limits
+TimeoutStartSec=7200
+MemoryMax=2G
+
+[Install]
+WantedBy=multi-user.target
