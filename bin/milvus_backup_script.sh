@@ -7,7 +7,7 @@ set -euo pipefail
 
 # Configuration
 BACKUP_DIR="/data/backups"
-DOCKER_IMAGE="milvusdb/milvus-backup:latest"
+DOCKER_IMAGE="milvusdb/milvus-backup:v0.5.8"
 MILVUS_HOST="localhost"  # Change if Milvus is on different host
 MILVUS_PORT="19530"      # Default Milvus port
 CONFIG_FILE=""           # Optional: path to backup config file
