@@ -33,8 +33,8 @@ sudo ./install.sh
 
 ### 1. Create Backup Directory
 ```bash
-sudo mkdir -p /data/backups
-sudo chown root:root /data/backups
+sudo mkdir -p /data/backup
+sudo chown root:root /data/backup
 ```
 
 ### 2. Install Backup Script
@@ -64,7 +64,7 @@ Edit `/usr/local/bin/milvus_backup_script.sh` to modify:
 
 ```bash
 # Backup location
-BACKUP_DIR="/data/backups"
+BACKUP_DIR="/data/backup"
 
 # Milvus connection
 MILVUS_HOST="localhost"     # Change if Milvus is remote
@@ -135,13 +135,13 @@ sudo journalctl -u milvus_backup.service --since "1 day ago"
 ### Backup Management
 ```bash
 # List backups
-ls -la /data/backups/
+ls -la /data/backup/
 
 # Check backup sizes
-du -sh /data/backups/backup-*
+du -sh /data/backup/backup-*
 
 # Manual cleanup (if needed)
-find /data/backups -name "backup-*" -type d -mtime +3 -exec rm -rf {} \;
+find /data/backup -name "backup-*" -type d -mtime +3 -exec rm -rf {} \;
 ```
 
 ## Restore Process
@@ -150,11 +150,11 @@ To restore from a backup:
 
 ```bash
 # List available backups
-ls /data/backups/
+ls /data/backup/
 
 # Restore using Docker
 docker run --rm \
-  -v /data/backups:/backup \
+  -v /data/backup:/backup \
   -e MILVUS_ADDRESS="localhost:19530" \
   milvusdb/milvus-backup:latest \
   restore \
@@ -168,7 +168,7 @@ docker run --rm \
 /usr/local/bin/milvus_backup_script.sh    # Backup script
 /etc/systemd/system/milvus_backup.service # Systemd service
 /etc/systemd/system/milvus_backup.timer   # Systemd timer
-/data/backups/                            # Backup storage
+/data/backup/                            # Backup storage
 /var/log/milvus-backup.log                # Backup logs
 ```
 
@@ -197,10 +197,10 @@ sudo systemctl status docker
 telnet localhost 19530
 
 # 3. Insufficient disk space
-df -h /data/backups
+df -h /data/backup
 
 # 4. Permission issues
-ls -la /data/backups
+ls -la /data/backup
 ```
 
 ### Docker Issues

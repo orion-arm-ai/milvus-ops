@@ -14,7 +14,8 @@ NC='\033[0m' # No Color
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKUP_DIR="/data/backups"
+BACKUP_DIR="/data/backup"
+BACKUP_CONFIG="$BACKUP_DIR/config.yaml"
 INSTALL_DIR="/usr/local/bin"
 SYSTEMD_DIR="/etc/systemd/system"
 LOG_FILE="/var/log/milvus-backup.log"
@@ -80,18 +81,18 @@ check_source_files() {
     
     local files_missing=0
     
-    if [[ ! -f "$SCRIPT_DIR/bin/milvus_backup_script.sh" ]]; then
-        print_error "Missing: bin/milvus_backup_script.sh"
+    if [[ ! -f "$SCRIPT_DIR/bin/milvus-backup.sh" ]]; then
+        print_error "Missing: bin/milvus-backup.sh"
         files_missing=1
     fi
     
-    if [[ ! -f "$SCRIPT_DIR/systemd/milvus_backup.service" ]]; then
-        print_error "Missing: systemd/milvus_backup.service"
+    if [[ ! -f "$SCRIPT_DIR/systemd/milvus-backup.service" ]]; then
+        print_error "Missing: systemd/milvus-backup.service"
         files_missing=1
     fi
     
-    if [[ ! -f "$SCRIPT_DIR/systemd/milvus_backup.timer" ]]; then
-        print_error "Missing: systemd/milvus_backup.timer"
+    if [[ ! -f "$SCRIPT_DIR/systemd/milvus-backup.timer" ]]; then
+        print_error "Missing: systemd/milvus-backup.timer"
         files_missing=1
     fi
     
@@ -114,6 +115,8 @@ create_directories() {
     
     # Create log directory if it doesn't exist
     mkdir -p "$(dirname "$LOG_FILE")"
+
+    cp "config.yaml" "$BACKUP_CONFIG"
     
     print_success "Directories created"
 }
@@ -122,11 +125,11 @@ create_directories() {
 install_script() {
     print_status "Installing backup script..."
     
-    cp "$SCRIPT_DIR/bin/milvus_backup_script.sh" "$INSTALL_DIR/"
-    chmod +x "$INSTALL_DIR/milvus_backup_script.sh"
-    chown root:root "$INSTALL_DIR/milvus_backup_script.sh"
+    cp "$SCRIPT_DIR/bin/milvus-backup.sh" "$INSTALL_DIR/"
+    chmod +x "$INSTALL_DIR/milvus-backup.sh"
+    chown root:root "$INSTALL_DIR/milvus-backup.sh"
     
-    print_success "Backup script installed to $INSTALL_DIR/milvus_backup_script.sh"
+    print_success "Backup script installed to $INSTALL_DIR/milvus-backup.sh"
 }
 
 # Install systemd files
@@ -134,14 +137,14 @@ install_systemd_files() {
     print_status "Installing systemd files..."
     
     # Copy service file
-    cp "$SCRIPT_DIR/systemd/milvus_backup.service" "$SYSTEMD_DIR/"
-    chmod 644 "$SYSTEMD_DIR/milvus_backup.service"
-    chown root:root "$SYSTEMD_DIR/milvus_backup.service"
+    cp "$SCRIPT_DIR/systemd/milvus-backup.service" "$SYSTEMD_DIR/"
+    chmod 644 "$SYSTEMD_DIR/milvus-backup.service"
+    chown root:root "$SYSTEMD_DIR/milvus-backup.service"
     
     # Copy timer file
-    cp "$SCRIPT_DIR/systemd/milvus_backup.timer" "$SYSTEMD_DIR/"
-    chmod 644 "$SYSTEMD_DIR/milvus_backup.timer"
-    chown root:root "$SYSTEMD_DIR/milvus_backup.timer"
+    cp "$SCRIPT_DIR/systemd/milvus-backup.timer" "$SYSTEMD_DIR/"
+    chmod 644 "$SYSTEMD_DIR/milvus-backup.timer"
+    chown root:root "$SYSTEMD_DIR/milvus-backup.timer"
     
     print_success "Systemd files installed"
 }
@@ -154,10 +157,10 @@ setup_systemd() {
     systemctl daemon-reload
     
     # Enable timer (will start on boot)
-    systemctl enable milvus_backup.timer
+    systemctl enable milvus-backup.timer
     
     # Start timer
-    systemctl start milvus_backup.timer
+    systemctl start milvus-backup.timer
     
     print_success "Systemd timer enabled and started"
 }
@@ -178,7 +181,7 @@ test_installation() {
     print_status "Testing installation..."
     
     # Check if timer is active
-    if systemctl is-active --quiet milvus_backup.timer; then
+    if systemctl is-active --quiet milvus-backup.timer; then
         print_success "Timer is active"
     else
         print_warning "Timer is not active"
@@ -186,7 +189,7 @@ test_installation() {
     fi
     
     # Check if timer is enabled
-    if systemctl is-enabled --quiet milvus_backup.timer; then
+    if systemctl is-enabled --quiet milvus-backup.timer; then
         print_success "Timer is enabled for boot"
     else
         print_warning "Timer is not enabled for boot"
@@ -195,7 +198,7 @@ test_installation() {
     
     # Show next scheduled run
     local next_run
-    next_run=$(systemctl list-timers milvus_backup.timer --no-pager --no-legend | awk '{print $1, $2}' | head -1)
+    next_run=$(systemctl list-timers milvus-backup.timer --no-pager --no-legend | awk '{print $1, $2}' | head -1)
     if [[ -n "$next_run" ]]; then
         print_success "Next backup scheduled: $next_run"
     fi
@@ -216,19 +219,19 @@ show_info() {
     echo "🗂️  Retention: 3 days"
     echo
     echo "Useful Commands:"
-    echo "  • Check timer status:    systemctl status milvus_backup.timer"
-    echo "  • View next run time:    systemctl list-timers milvus_backup.timer"
-    echo "  • Run backup manually:   systemctl start milvus_backup.service"
-    echo "  • View logs:             journalctl -u milvus_backup.service"
+    echo "  • Check timer status:    systemctl status milvus-backup.timer"
+    echo "  • View next run time:    systemctl list-timers milvus-backup.timer"
+    echo "  • Run backup manually:   systemctl start milvus-backup.service"
+    echo "  • View logs:             journalctl -u milvus-backup.service"
     echo "  • View backup logs:      tail -f $LOG_FILE"
     echo
     echo "Configuration:"
-    echo "  • Edit backup script:    $INSTALL_DIR/milvus_backup_script.sh"
-    echo "  • Edit timer schedule:   $SYSTEMD_DIR/milvus_backup.timer"
+    echo "  • Edit backup script:    $INSTALL_DIR/milvus-backup.sh"
+    echo "  • Edit timer schedule:   $SYSTEMD_DIR/milvus-backup.timer"
     echo
     echo "To test the backup service:"
-    echo "  sudo systemctl start milvus_backup.service"
-    echo "  sudo journalctl -u milvus_backup.service -f"
+    echo "  sudo systemctl start milvus-backup.service"
+    echo "  sudo journalctl -u milvus-backup.service -f"
     echo
 }
 
@@ -237,13 +240,13 @@ cleanup_on_error() {
     print_error "Installation failed. Cleaning up..."
     
     # Stop and disable timer if it was started
-    systemctl stop milvus_backup.timer 2>/dev/null || true
-    systemctl disable milvus_backup.timer 2>/dev/null || true
+    systemctl stop milvus-backup.timer 2>/dev/null || true
+    systemctl disable milvus-backup.timer 2>/dev/null || true
     
     # Remove installed files
-    rm -f "$SYSTEMD_DIR/milvus_backup.service"
-    rm -f "$SYSTEMD_DIR/milvus_backup.timer"
-    rm -f "$INSTALL_DIR/milvus_backup_script.sh"
+    rm -f "$SYSTEMD_DIR/milvus-backup.service"
+    rm -f "$SYSTEMD_DIR/milvus-backup.timer"
+    rm -f "$INSTALL_DIR/milvus-backup.sh"
     
     systemctl daemon-reload
     
@@ -305,15 +308,15 @@ uninstall() {
     print_status "Uninstalling Milvus backup service..."
     
     # Stop and disable timer
-    systemctl stop milvus_backup.timer 2>/dev/null || true
-    systemctl disable milvus_backup.timer 2>/dev/null || true
+    systemctl stop milvus-backup.timer 2>/dev/null || true
+    systemctl disable milvus-backup.timer 2>/dev/null || true
     
     # Remove systemd files
-    rm -f "$SYSTEMD_DIR/milvus_backup.service"
-    rm -f "$SYSTEMD_DIR/milvus_backup.timer"
+    rm -f "$SYSTEMD_DIR/milvus-backup.service"
+    rm -f "$SYSTEMD_DIR/milvus-backup.timer"
     
     # Remove script
-    rm -f "$INSTALL_DIR/milvus_backup_script.sh"
+    rm -f "$INSTALL_DIR/milvus-backup.sh"
     
     # Reload systemd
     systemctl daemon-reload

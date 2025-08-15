@@ -6,11 +6,9 @@
 set -euo pipefail
 
 # Configuration
-BACKUP_DIR="/data/backups"
+BACKUP_DIR="/data/backup"
 DOCKER_IMAGE="milvusdb/milvus-backup:v0.5.8"
-MILVUS_HOST="localhost"  # Change if Milvus is on different host
-MILVUS_PORT="19530"      # Default Milvus port
-CONFIG_FILE=""           # Optional: path to backup config file
+CONFIG_FILE="$BACKUP_DIR/config.yaml"           # Optional: path to backup config file
 LOG_FILE="/var/log/milvus-backup.log"
 RETENTION_DAYS=3
 
@@ -32,29 +30,26 @@ cleanup_old_backups() {
 # Main backup function
 create_backup() {
     local backup_name="backup-$(date +%Y%m%d-%H%M%S)"
-    
+    mkdir -p "$BACKUP_DIR/latest"
+
     log "Starting backup: $backup_name"
-    
+
     # Prepare Docker command
-    local docker_cmd="docker run --rm"
+    local docker_cmd="docker run --rm --network=host --entrypoint='/app/milvus-backup'"
     docker_cmd="$docker_cmd -v $BACKUP_DIR:/backup"
-    docker_cmd="$docker_cmd -e MILVUS_ADDRESS=$MILVUS_HOST:$MILVUS_PORT"
-    
-    # Add config file if specified
-    if [ -n "$CONFIG_FILE" ] && [ -f "$CONFIG_FILE" ]; then
-        docker_cmd="$docker_cmd -v $CONFIG_FILE:/config/backup.yaml"
-        docker_cmd="$docker_cmd -e CONFIG_FILE=/config/backup.yaml"
-    fi
-    
+    docker_cmd="$docker_cmd -v $CONFIG_FILE:/config/backup.yaml"
+    docker_cmd="$docker_cmd -e CONFIG_FILE=/config/backup.yaml"
     docker_cmd="$docker_cmd $DOCKER_IMAGE"
-    docker_cmd="$docker_cmd create --backup-name $backup_name --backup-dir /backup"
-    
+    docker_cmd="$docker_cmd create -n latest --config /config/backup.yaml"
+
+    echo "docker_cmd: $docker_cmd"
     # Create backup using Docker
     if eval "$docker_cmd"; then
         log "Backup $backup_name created successfully"
-        
+
         # Verify backup exists
-        if [ -d "$BACKUP_DIR/$backup_name" ]; then
+        if [ -d "$BACKUP_DIR/latest" ]; then
+            mv "$BACKUP_DIR/latest" "$BACKUP_DIR/$backup_name"
             log "Backup verified: $(du -sh "$BACKUP_DIR/$backup_name" | cut -f1)"
         else
             log "ERROR: Backup directory not found after creation"
@@ -69,29 +64,29 @@ create_backup() {
 # Main execution
 main() {
     log "=== Starting Milvus backup process ==="
-    
+
     # Check if Docker is available
     if ! command -v docker &> /dev/null; then
         log "ERROR: Docker is not installed or not in PATH"
         exit 1
     fi
-    
+
     # Check if Docker daemon is running
     if ! docker info &> /dev/null; then
         log "ERROR: Docker daemon is not running"
         exit 1
     fi
-    
+
     # Pull the latest backup image
     log "Pulling latest backup image..."
     docker pull "$DOCKER_IMAGE"
-    
+
     # Create backup
     create_backup
-    
+
     # Cleanup old backups
     cleanup_old_backups
-    
+
     log "=== Backup process completed ==="
 }
 
